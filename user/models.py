@@ -1,0 +1,83 @@
+import os
+import uuid
+
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.db import models
+from django.conf import settings
+from django.utils.text import slugify
+from django.utils.translation import gettext as _
+
+
+class UserManager(BaseUserManager):
+    """Define a model manager for User model with no username field."""
+
+    use_in_migrations = True
+
+    def _create_user(self, email, password, **extra_fields):
+        """Create and save a User with the given email and password."""
+        if not email:
+            raise ValueError("The given email must be set")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, email, password=None, **extra_fields):
+        """Create and save a regular User with the given email and password."""
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email, password, **extra_fields):
+        """Create and save a SuperUser with the given email and password."""
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+
+        return self._create_user(email, password, **extra_fields)
+
+
+def user_photo_file_path(instance, file_name):
+    _, extension = os.path.splitext(file_name)
+    filename = f"{slugify(instance.photo)}-{uuid.uuid4()}{extension}"
+    return os.path.join("uploads/users/", filename)
+
+
+class User(AbstractUser):
+    """User model."""
+
+    username = None
+    email = models.EmailField(_("email address"), unique=True)
+    photo = models.ImageField(
+        upload_to=user_photo_file_path,
+        blank=True, null=True
+    )
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    objects = UserManager()
+
+
+class UserFollowing(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="owner",
+        on_delete=models.CASCADE
+    )
+    subscriber = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="followers",
+        on_delete=models.CASCADE
+    )
+
+    def __str__(self) -> str:
+        return f"{self.subscriber} follows {self.user}"
+
+    class Meta:
+        unique_together = ["user", "subscriber"]
