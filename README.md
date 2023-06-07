@@ -25,5 +25,6 @@ Users can add comments to posts and view comments on posts.
 Only authenticated users can perform actions such as creating posts/comments, and following/unfollowing users.
 Users can update and delete their own posts and comments.
 Users can update and delete their own profile.
+
 ## API Documentation:
 The API is well-documented with clear instructions on how to use each endpoint.
